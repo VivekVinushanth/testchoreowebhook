@@ -1,4 +1,5 @@
 import ballerinax/trigger.asgardeo;
+import ballerina/log;
 import ballerina/http;
 
 configurable asgardeo:ListenerConfig config = ?;
