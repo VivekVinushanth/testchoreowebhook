@@ -1,6 +1,8 @@
 import ballerinax/trigger.asgardeo;
 import ballerina/log;
+// import ballerina/email;
 import ballerina/http;
+import ballerina/oauth2;
 
 configurable asgardeo:ListenerConfig config = ?;
 
@@ -17,12 +19,22 @@ type idvResponse readonly & record {
     string userIdentityToken;
 };
 
+type tokenResponse readonly & record {
+    string access_token;
+    string token_type;
+    string expires_in;
+};
+
+// string email;
+// string token;
+
 service asgardeo:RegistrationService on webhookListener {
     remote function onAddUser(asgardeo:AddUserEvent event) returns error? {
         log:printInfo(event.toJsonString());
         log:printInfo(API_USERNAME);
         idvResponse idvResponse = check idvClient->/api/v1/verify/requests.post({
-            email: "cvivekvinushanth+1@gmail.com",
+            // email: event.eventData.claims.hasKey("http://wso2.org/claims/emailaddress") ? event.eventData.claims["http://wso2.org/claims/emailaddress"] : "",
+            email: "cvivekvinushanth+19@gmail.com",
             summary: "Please verify your Identity",
             description: "To continue with your account creation please verify your identity through EvidentID",
             userAuthenticationType: "blindtrust",
@@ -31,7 +43,27 @@ service asgardeo:RegistrationService on webhookListener {
                 {"attributeType": "core.lastname"}
             ]
         });
-        log:printInfo(idvResponse.toJsonString());
+
+        oauth2:ClientOAuth2Provider provider = new({
+            tokenUrl: "https://api.asgardeo.io/t/vanheim/oauth2/token",
+            clientId: ASG_CLIENT_ID,
+            clientSecret: ASG_CLIENT_SEC,
+            scopes: ["SYSTEM"]
+        });
+
+       string token  = check provider.generateToken();
+       log:printInfo(token);
+       log:printInfo(idvResponse.toJsonString());
+
+
+       http:Client asgardeoClient = check new ("https://api.asgardeo.io/t/vanheim", auth = {
+            token: token
+    });
+
+        //  = check asgardeoClient->/scim2/Users.get({
+        //     filter=username+eq+
+        // });
+
 
     }
 
