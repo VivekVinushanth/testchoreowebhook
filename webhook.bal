@@ -25,16 +25,15 @@ type tokenResponse readonly & record {
     string expires_in;
 };
 
-// string email;
-// string token;
-
 service asgardeo:RegistrationService on webhookListener {
     remote function onAddUser(asgardeo:AddUserEvent event) returns error? {
-        log:printInfo(event.toJsonString());
+        string? userId = event.eventData?.userId;
+        string? userName = event.eventData?.userName;
         log:printInfo(API_USERNAME);
         idvResponse idvResponse = check idvClient->/api/v1/verify/requests.post({
             // email: event.eventData.claims.hasKey("http://wso2.org/claims/emailaddress") ? event.eventData.claims["http://wso2.org/claims/emailaddress"] : "",
-            email: "cvivekvinushanth+19@gmail.com",
+           // Ensure that you dont allow alphanumeric usernames.
+            email: userName,
             summary: "Please verify your Identity",
             description: "To continue with your account creation please verify your identity through EvidentID",
             userAuthenticationType: "blindtrust",
@@ -52,20 +51,29 @@ service asgardeo:RegistrationService on webhookListener {
         });
 
        string token  = check provider.generateToken();
-       log:printInfo(token);
-       log:printInfo(idvResponse.toJsonString());
-
 
        http:Client asgardeoClient = check new ("https://api.asgardeo.io/t/vanheim", auth = {
             token: token
     });
+        // string url = "/scim2/Users/" + userId;
+      
+        json|http:ClientError scim2update = asgardeoClient->patch("/scim2/Users/", {
+                "Operations": [
+                    {
+                        "op": "replace",
+                        "value": {
+                            "schemas": ["urn:scim:wso2:schema"],
+                            "urn:scim:wso2:schema": {
+                                "evidentRequestID": idvResponse.id,
+                                "identityVerificationStatus": "PENDING"
+                            }
+                        }
+                    }
+                ]
+            });
 
-        //  = check asgardeoClient->/scim2/Users.get({
-        //     filter=username+eq+
-        // });
-
-
-    }
+        log:printInfo((check scim2update).toString());
+        }
 
     remote function onConfirmSelfSignup(asgardeo:GenericEvent event) returns error? {
         //Not Implemented
