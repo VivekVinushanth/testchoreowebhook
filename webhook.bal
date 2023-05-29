@@ -55,9 +55,9 @@ service asgardeo:RegistrationService on webhookListener {
        http:Client asgardeoClient = check new ("https://api.asgardeo.io/t/vanheim", auth = {
             token: token
     });
-        // string url = "/scim2/Users/" + userId;
       
-        json|http:ClientError scim2update = asgardeoClient->patch("/scim2/Users/", {
+      string patchUrl = "/scim2/Users/" + <string>userId;
+        json|http:ClientError scim2update = asgardeoClient->patch(patchUrl, {
                 "Operations": [
                     {
                         "op": "replace",
